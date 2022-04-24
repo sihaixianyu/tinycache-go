@@ -1,7 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
+
+type Space struct {
+	size uint64
+}
 
 func main() {
-	fmt.Println("Hello Wolrd!")
+	var s Space
+
+	fmt.Printf("%v", s)
 }
