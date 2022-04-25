@@ -1,58 +1,84 @@
 package lru
 
-import "tinycache-go/list"
+import (
+	"fmt"
+	"strings"
+	"tinycache-go/list"
+	"tinycache-go/util"
+)
 
-type Cache[T list.Sized] struct {
+type Sized interface {
+	Size() uint64
+}
+
+type Entry struct {
+	Key string
+	Val Sized
+}
+
+type Cache struct {
 	// Memory control
 	maxBytes  uint64
 	usedBytes uint64
 	// Core data stucture
-	nodeList *list.List[T]
-	nodeMap  map[string]*list.Node[T]
+	nodeList *list.List[*Entry]
+	nodeMap  map[string]*list.Node[*Entry]
 	// Action to be performed when an entry is cleared
-	OnCleared func(key string, Val T)
+	OnCleared func(key string, val Sized)
 }
 
-func NewCache[T list.Sized](maxBytes uint64, onCleared func(key string, Val T)) *Cache[T] {
-	return &Cache[T]{
+// * If invoker set maxBytes to 0, the available cache is infinite
+func New(maxBytes uint64, onCleared func(key string, val Sized)) *Cache {
+	return &Cache{
 		maxBytes:  maxBytes,
 		usedBytes: 0,
-		nodeList:  list.New[T](),
-		nodeMap:   make(map[string]*list.Node[T]),
+		nodeList:  list.New[*Entry](),
+		nodeMap:   make(map[string]*list.Node[*Entry]),
 		OnCleared: onCleared,
 	}
 }
 
-func (c *Cache[T]) Get(key string) (val T, ok bool) {
+// Return the number of bytes used in current cache
+func (c *Cache) UsedBytes() uint64 {
+	return c.usedBytes
+}
+
+// Return the number of maximum bytes allowed in current cache
+func (c *Cache) MaxBytes() uint64 {
+	return c.maxBytes
+}
+
+func (c *Cache) Get(key string) (val Sized, ok bool) {
 	if node, ok := c.nodeMap[key]; ok {
 		c.nodeList.MoveToFront(node)
-		return node.Val, true
+		return node.Elem.Val, true
 	}
 
 	return
 }
 
-func (c *Cache[T]) Add(key string, val T) {
+func (c *Cache) Add(key string, val Sized) {
 	if node, ok := c.nodeMap[key]; ok {
 		c.nodeList.MoveToFront(node)
-		c.usedBytes += val.Size() - node.Val.Size()
-		node.Val = val
+		node.Elem.Val = val
+		c.usedBytes += val.Size() - node.Elem.Val.Size()
 	} else {
-		node := &list.Node[T]{Key: key, Val: val}
-		c.nodeList.PushFront(node)
-		c.nodeMap[key] = node
+		entry := &Entry{Key: key, Val: val}
+		newNode := c.nodeList.PushFront(entry)
+		c.nodeMap[key] = newNode
+		c.usedBytes += uint64(len(key)) + val.Size()
 	}
 
 	for c.maxBytes != 0 && c.maxBytes < c.usedBytes {
-		c.nodeList.PopBack()
+		c.RemoveOldest()
 	}
 }
 
-func (c *Cache[T]) RemoveOldest() {
+func (c *Cache) RemoveOldest() {
 	node := c.nodeList.PopBack()
 	if node != nil {
-		key, val := node.Key, node.Val
-		delete(c.nodeMap, node.Key)
+		key, val := node.Elem.Key, node.Elem.Val
+		delete(c.nodeMap, node.Elem.Key)
 		c.usedBytes -= uint64(len(key)) + val.Size()
 
 		if c.OnCleared != nil {
@@ -61,17 +87,21 @@ func (c *Cache[T]) RemoveOldest() {
 	}
 }
 
-// Return length of nodeList, which also means the number of elements in cache
-func (c *Cache[T]) Len() uint {
-	return c.nodeList.Len()
-}
+func (c *Cache) Format(level int) string {
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("Cache: %p {\n", c))
 
-// Return the used bytes of cache
-func (c *Cache[T]) Size() uint64 {
-	return c.usedBytes
-}
+	util.InsertTab(&builder, level+1)
+	builder.WriteString(fmt.Sprintf("UsedBytes: %d\n", c.usedBytes))
+	util.InsertTab(&builder, level+1)
+	builder.WriteString(fmt.Sprintf("MaxBytes: %d\n", c.maxBytes))
+	util.InsertTab(&builder, level+1)
+	builder.WriteString(fmt.Sprintf("nodeMap: %v\n", c.nodeMap))
+	util.InsertTab(&builder, level+1)
+	builder.WriteString(fmt.Sprintf("nodeList: %s\n", c.nodeList.Format(1)))
 
-// Return the maximum bytes of cache
-func (c *Cache[T]) Cap() uint64 {
-	return c.maxBytes
+	util.InsertTab(&builder, level)
+	builder.WriteString("}")
+
+	return builder.String()
 }

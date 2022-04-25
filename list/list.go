@@ -2,28 +2,25 @@ package list
 
 import (
 	"fmt"
+	"strings"
+	"tinycache-go/util"
 )
 
-type Sized interface {
-	Size() uint64
-}
-
-type Node[T Sized] struct {
+type Node[T any] struct {
 	prev *Node[T]
 	next *Node[T]
 	list *List[T]
 
-	Key string
-	Val  T
+	Elem T
 }
 
-type List[T Sized] struct {
+type List[T any] struct {
 	dummyHead *Node[T]
 	dummyTail *Node[T]
 	len       uint
 }
 
-func New[T Sized]() *List[T] {
+func New[T any]() *List[T] {
 	list := &List[T]{
 		dummyHead: &Node[T]{},
 		dummyTail: &Node[T]{},
@@ -39,18 +36,67 @@ func New[T Sized]() *List[T] {
 	return list
 }
 
-func (l *List[T]) PushFront(node *Node[T]) *Node[T] {
-	head := l.dummyHead.next
+func (l List[T]) Len() uint {
+	return l.len
+}
 
-	l.dummyHead.next = node
-	node.prev = l.dummyHead
-	node.next = head
-	head.prev = node
+func (l List[T]) Front() *Node[T] {
+	if l.dummyHead.next == l.dummyTail {
+		return nil
+	}
 
-	node.list = l
+	return l.dummyHead.next
+}
+
+func (l List[T]) Back() *Node[T] {
+	if l.dummyHead.next == l.dummyTail {
+		return nil
+	}
+
+	return l.dummyTail.prev
+}
+
+func (l *List[T]) PushFront(val T) *Node[T] {
+	currHead := l.dummyHead.next
+	newNode := &Node[T]{Elem: val}
+
+	l.dummyHead.next = newNode
+	currHead.prev = newNode
+
+	newNode.prev = l.dummyHead
+	newNode.next = currHead
+
+	newNode.list = l
 	l.len += 1
 
-	return node
+	return newNode
+}
+
+func (l *List[T]) PushBack(val T) *Node[T] {
+	currTail := l.dummyTail.prev
+	newNode := &Node[T]{Elem: val}
+
+	l.dummyTail.prev = newNode
+	currTail.next = newNode
+
+	newNode.next = l.dummyTail
+	newNode.prev = currTail
+
+	newNode.list = l
+	l.len += 1
+
+	return newNode
+}
+
+func (l *List[T]) PopFront() *Node[T] {
+	if l.dummyTail.prev == l.dummyHead {
+		return nil
+	}
+
+	tar := l.dummyHead.next
+	l.remove(tar)
+
+	return tar
 }
 
 func (l *List[T]) PopBack() *Node[T] {
@@ -59,11 +105,7 @@ func (l *List[T]) PopBack() *Node[T] {
 	}
 
 	tar := l.dummyTail.prev
-	tar.prev.next = l.dummyTail
-	l.dummyTail = tar.prev
-
-	tar.list = nil
-	l.len -= 1
+	l.remove(tar)
 
 	return tar
 }
@@ -74,14 +116,22 @@ func (l *List[T]) MoveToFront(node *Node[T]) {
 	}
 
 	l.remove(node)
-	l.PushFront(node)
+	l.PushFront(node.Elem)
 }
 
-func (l *List[T]) Debug() {
-	for curr := l.dummyHead.next; curr != nil; curr = curr.next {
-		fmt.Printf("%v ", curr)
+func (l List[T]) Format(level int) string {
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("list: %p {\n", &l))
+
+	for curr := l.dummyHead.next; curr != l.dummyTail; curr = curr.next {
+		util.InsertTab(&builder, level+1)
+		builder.WriteString(fmt.Sprintf("node: %p {prev: %p, next: %p, Elem: %v}\n", curr, curr.prev, curr.next, curr.Elem))
 	}
-	fmt.Println()
+
+	util.InsertTab(&builder, level)
+	builder.WriteString("}")
+
+	return builder.String()
 }
 
 func (l *List[T]) remove(node *Node[T]) {
@@ -92,11 +142,11 @@ func (l *List[T]) remove(node *Node[T]) {
 	node.prev.next = node.next
 	node.next.prev = node.prev
 
+	// Avoid memory leak
 	node.prev = nil
 	node.next = nil
-	l.len -= 1
-}
 
-func (l *List[T]) Len() uint {
-	return l.len
+	// No longer belong to this list
+	node.list = nil
+	l.len -= 1
 }

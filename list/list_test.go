@@ -2,51 +2,33 @@ package list
 
 import (
 	"testing"
+	"tinycache-go/util"
 
 	"github.com/stretchr/testify/assert"
 )
 
-type Space struct {
-	size uint64
-}
-
-func (s Space) Size() uint64 {
-	return s.size
-}
-
 func TestList(t *testing.T) {
-	l := New[Space]()
-	assert.Equal(t, 0, l.len)
+	l := New[int]()
+	assert.Equal(t, uint(0), l.len)
 
-	node1 := &Node[Space]{
-		Val: Space{size: 1},
-	}
-	l.PushFront(node1)
+	l.PushFront(1)
+	l.PushFront(2)
+	l.PushFront(3)
+	util.Debug(l)
 
-	node2 := &Node[Space]{
-		Val: Space{size: 2},
-	}
-	l.PushFront(node2)
+	assert.Equal(t, 3, l.Front().Elem)
+	assert.Equal(t, 1, l.Back().Elem)
 
-	node3 := &Node[Space]{
-		Val: Space{size: 4},
-	}
-	l.PushFront(node3)
+	l.MoveToFront(l.Back())
+	assert.Equal(t, 1, l.Front().Elem)
+	util.Debug(l)
 
-	l.Debug()
+	assert.Equal(t, 1, l.PopFront().Elem)
+	util.Debug(l)
 
-	l.MoveToFront(node2)
-	l.Debug()
+	assert.Equal(t, 2, l.PopBack().Elem)
+	util.Debug(l)
 
-	l.MoveToFront(node3)
-	l.Debug()
-
-	l.remove(node3)
-	l.Debug()
-
-	l.remove(node1)
-	l.Debug()
-
-	l.remove(node2)
-	l.Debug()
+	assert.Equal(t, 3, l.PopBack().Elem)
+	util.Debug(l)
 }
