@@ -7,16 +7,12 @@ import (
 	"tinycache-go/util"
 )
 
-type Sized interface {
-	Size() int
-}
-
-type entry[K comparable, V Sized] struct {
+type entry[K comparable, V any] struct {
 	Key K
 	Val V
 }
 
-type LRU[K comparable, V Sized] struct {
+type LRU[K comparable, V any] struct {
 	cap int
 	len int
 
@@ -27,8 +23,7 @@ type LRU[K comparable, V Sized] struct {
 	OnCleared func(key K, val V)
 }
 
-// * If invoker set maxBytes to 0, the available cache is math.MaxInt
-func New[K comparable, V Sized](cap int, onCleared func(key K, val V)) *LRU[K, V] {
+func New[K comparable, V any](cap int, onCleared func(key K, val V)) *LRU[K, V] {
 	return &LRU[K, V]{
 		cap:       cap,
 		nodeList:  list.New[*entry[K, V]](),
@@ -85,12 +80,12 @@ func (c *LRU[K, V]) RemoveLast() {
 
 func (c *LRU[K, V]) Format(level int) string {
 	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("Cache: %p {\n", c))
+	builder.WriteString(fmt.Sprintf("LRU: %p {\n", c))
 
 	util.InsertTab(&builder, level+1)
-	builder.WriteString(fmt.Sprintf("Capacity: %d\n", c.cap))
+	builder.WriteString(fmt.Sprintf("cap: %d\n", c.cap))
 	util.InsertTab(&builder, level+1)
-	builder.WriteString(fmt.Sprintf("Length: %d\n", c.len))
+	builder.WriteString(fmt.Sprintf("len: %d\n", c.len))
 	util.InsertTab(&builder, level+1)
 	builder.WriteString(fmt.Sprintf("nodeMap: %v\n", c.nodeMap))
 	util.InsertTab(&builder, level+1)

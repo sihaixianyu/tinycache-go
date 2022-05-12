@@ -56,7 +56,7 @@ func (c *Cache) Put(key string, val ByteSpace) {
 	}
 
 	nBytes := int64(len(key)) + int64(val.Size())
-	for c.usedBytes+nBytes > c.maxBytes {
+	for c.maxBytes != 0 && c.usedBytes+nBytes > c.maxBytes {
 		c.lru.RemoveLast()
 	}
 

@@ -8,22 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type Space struct {
+type Value struct {
 	size int
 }
 
-func (s Space) Size() int {
-	return s.size
-}
-
-func TestLRUCache(t *testing.T) {
-	c := New(3, func(key string, val Space) {
-		fmt.Printf("clear entry: key=\"%s\" size=%dB\n", key, val.Size())
+func TestLRU(t *testing.T) {
+	c := New(3, func(key string, val Value) {
+		fmt.Printf("clear entry: key=\"%s\" val=\"%v\"\n", key, val)
 	})
 
-	space1 := Space{size: 1}
-	space2 := Space{size: 2}
-	space3 := Space{size: 3}
+	space1 := Value{size: 1}
+	space2 := Value{size: 2}
+	space3 := Value{size: 3}
 
 	c.Put("space1", space1)
 	c.Put("space2", space2)
@@ -37,7 +33,7 @@ func TestLRUCache(t *testing.T) {
 	assert.Equal(t, space1, v)
 	util.Debug(c)
 
-	space4 := Space{size: 4}
+	space4 := Value{size: 4}
 	c.Put("space4", space4)
 	assert.Equal(t, 3, c.Cap())
 	assert.Equal(t, 3, c.Len())
@@ -49,6 +45,6 @@ func TestLRUCache(t *testing.T) {
 	c.RemoveLast()
 	v, ok = c.Get("space2")
 	assert.Equal(t, false, ok)
-	assert.Equal(t, v, Space{})
+	assert.Equal(t, v, Value{})
 	util.Debug(c)
 }
