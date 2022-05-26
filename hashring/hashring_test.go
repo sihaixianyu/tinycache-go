@@ -14,8 +14,8 @@ func TestMap(t *testing.T) {
 	ring := New(3, myHashFn)
 
 	ring.Put("2", "4", "6")
-	testKeys := map[string]string {
-		"2": "2",
+	testKeys := map[string]string{
+		"2":  "2",
 		"11": "2",
 		"23": "4",
 		"27": "2",

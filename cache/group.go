@@ -17,23 +17,16 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 }
 
 type Group struct {
-	name   string
-	mainCache  Cache
-	getter Getter
+	name      string
+	mainCache Cache
+	getter    Getter
+	picker    PeerPicker
 }
 
 var (
 	mu     sync.RWMutex
 	groups = make(map[string]*Group)
 )
-
-func GetGroup(name string) *Group {
-	mu.RLock()
-	g := groups[name]
-	mu.RUnlock()
-
-	return g
-}
 
 func NewGroup(name string, maxBytes int64, getter Getter) *Group {
 	if getter == nil {
@@ -44,14 +37,30 @@ func NewGroup(name string, maxBytes int64, getter Getter) *Group {
 	defer mu.Unlock()
 
 	g := &Group{
-		name:   name,
-		getter: getter,
-		mainCache:  NewCache(maxBytes),
+		name:      name,
+		getter:    getter,
+		mainCache: NewCache(maxBytes),
 	}
 
 	groups[name] = g
 
 	return g
+}
+
+func GetGroup(name string) *Group {
+	mu.RLock()
+	g := groups[name]
+	mu.RUnlock()
+
+	return g
+}
+
+func (g *Group) RegisterPicker(picker PeerPicker) {
+	if g.picker != nil {
+		panic("register peer picker more than once")
+	}
+
+	g.picker = picker
 }
 
 func (g *Group) Get(key string) (ByteSpace, error) {
@@ -79,7 +88,7 @@ func (g *Group) getLocal(key string) (ByteSpace, error) {
 
 	val := ByteSpace(bytes)
 	g.populateCache(key, val)
-	
+
 	return val, nil
 }
 
