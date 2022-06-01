@@ -76,8 +76,27 @@ func (g *Group) Get(key string) (ByteSpace, error) {
 	return g.load(key)
 }
 
-func (g *Group) load(key string) (ByteSpace, error) {
+func (g *Group) load(key string) (val ByteSpace, err error) {
+	if g.picker != nil {
+		if peer, ok := g.picker.PickPeer(key); ok {
+			log.Println(peer)
+			if val, err := g.getFromPeer(peer, key); err == nil {
+				return val, nil
+			}
+			log.Println("[TinyCache] failed to get from peer: ", err)
+		}
+	}
+
 	return g.getLocal(key)
+}
+
+func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteSpace, error) {
+	bytes, err := peer.Get(g.name, key)
+	if err != nil {
+		return ByteSpace{}, err
+	}
+
+	return ByteSpace(bytes), nil
 }
 
 func (g *Group) getLocal(key string) (ByteSpace, error) {

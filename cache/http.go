@@ -10,6 +10,22 @@ import (
 	"tinycache-go/hashring"
 )
 
+const (
+	defaultBasePath = "/_tinycache"
+	defaultReplicas = 3
+)
+
+// PeerPicker is the interface that must be implemented to locate
+// the peer that owns a specific key.
+type PeerPicker interface {
+	PickPeer(key string) (peer PeerGetter, ok bool)
+}
+
+// PeerGetter is the interface that must be implemented by a peer.
+type PeerGetter interface {
+	Get(group string, key string) ([]byte, error)
+}
+
 type HTTPPool struct {
 	self        string
 	basePath    string
@@ -36,7 +52,7 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p.Log("%s %s", r.Method, r.URL.Path)
 
-	parts := strings.SplitN(r.URL.Path[len(p.basePath):], "/", 2)
+	parts := strings.SplitN(r.URL.Path[len(p.basePath)+1:], "/", 2)
 	if len(parts) != 2 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return

@@ -2,6 +2,7 @@ package hashring
 
 import (
 	"hash/crc32"
+	"log"
 	"sort"
 	"strconv"
 )
@@ -32,7 +33,7 @@ func New(numReplicas int, hashFn HashFn) *HashRing {
 func (m *HashRing) Put(keys ...string) {
 	for _, k := range keys {
 		for i := 0; i < m.numReplicas; i++ {
-			mixedKey := []byte(strconv.Itoa(i)+ k)
+			mixedKey := []byte(strconv.Itoa(i) + k)
 			hashCode := int(m.hashFn(mixedKey))
 			m.ring = append(m.ring, hashCode)
 			m.codeToKey[hashCode] = k
@@ -50,6 +51,7 @@ func (m *HashRing) Get(key string) string {
 	idx := sort.Search(len(m.ring), func(i int) bool {
 		return m.ring[i] >= hashCode
 	})
+	log.Println(m)
 
 	return m.codeToKey[m.ring[idx%len(m.ring)]]
 }
